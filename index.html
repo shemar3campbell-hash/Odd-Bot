@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Even/Odd Recovery Pro V5 OAuth</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --line:#2a3242;
+    --txt:#e6edf3; --dim:#8b949e; --accent:#3b82f6;
+    --even:#22c55e; --odd:#f97316; --win:#22c55e; --loss:#ef4444; --warn:#eab308;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+       font-family:"Segoe UI",system-ui,-apple-system,sans-serif;font-size:14px}
+  header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+         padding:12px 18px;background:var(--panel);border-bottom:1px solid var(--line)}
+  header h1{font-size:17px;margin:0;font-weight:600;letter-spacing:.3px}
+  .badge{font-size:11px;padding:3px 9px;border-radius:99px;background:var(--panel2);
+        border:1px solid var(--line);color:var(--dim)}
+  .badge.ok{color:var(--even);border-color:var(--even)}
+  .badge.bad{color:var(--loss);border-color:var(--loss)}
+  .badge.warn{color:var(--warn);border-color:var(--warn)}
+  .wrap{display:grid;grid-template-columns:330px 1fr;gap:14px;padding:14px;align-items:start}
+  @media(max-width:900px){.wrap{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+  .card h2{font-size:12px;text-transform:uppercase;letter-spacing:.9px;color:var(--dim);
+           margin:0 0 12px;font-weight:600}
+  label{display:block;font-size:12px;color:var(--dim);margin:10px 0 4px}
+  input,select{width:100%;padding:8px 10px;background:var(--panel2);color:var(--txt);
+               border:1px solid var(--line);border-radius:6px;font-size:14px;font-family:inherit}
+  input:focus,select:focus{outline:none;border-color:var(--accent)}
+  input[type=checkbox]{width:auto;margin:0}
+  button{padding:9px 12px;border:0;border-radius:6px;font-size:13px;font-weight:600;
+         cursor:pointer;font-family:inherit;background:var(--panel2);color:var(--txt);
+         border:1px solid var(--line)}
+  button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  button.start{background:var(--even);color:#062910;border-color:var(--even)}
+  button.stop{background:var(--loss);color:#fff;border-color:var(--loss)}
+  button:hover{filter:brightness(1.12)}
+  button:disabled{opacity:.4;cursor:not-allowed;filter:none}
+  .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .btns button{flex:1 1 auto;min-width:92px}
+  .wide{width:100%;margin-top:10px}
+  .pwwrap{position:relative}
+  .pwwrap input{padding-right:58px}
+  .eye{position:absolute;right:4px;top:4px;padding:5px 9px;font-size:11px}
+  .chk{display:flex;gap:8px;align-items:flex-start;margin-top:10px;font-size:11.5px;color:var(--dim);line-height:1.45}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:10px}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+  .stat .k{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px}
+  .stat .v{font-size:19px;font-weight:700;margin-top:3px;font-variant-numeric:tabular-nums}
+  .digits{display:flex;flex-wrap:wrap;gap:6px}
+  .d{width:32px;height:32px;display:flex;align-items:center;justify-content:center;
+     border-radius:6px;font-weight:700;font-size:15px;background:var(--panel2);
+     border:1px solid var(--line)}
+  .d.even{color:var(--even);border-color:#1d4a30}
+  .d.odd{color:var(--odd);border-color:#5a3316}
+  .d.last{outline:2px solid var(--accent);outline-offset:1px}
+  .bar{height:8px;border-radius:99px;background:var(--odd);overflow:hidden;margin-top:8px}
+  .bar i{display:block;height:100%;background:var(--even)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
+  th{text-align:left;color:var(--dim);font-weight:600;font-size:11px;text-transform:uppercase;
+     letter-spacing:.6px;padding:7px 8px;border-bottom:1px solid var(--line)}
+  td{padding:7px 8px;border-bottom:1px solid #202736}
+  .w{color:var(--win)} .l{color:var(--loss)} .dim{color:var(--dim)}
+  #log{max-height:320px;overflow-y:auto}
+  .msg{font-size:12px;line-height:1.5;margin-top:9px;padding:8px 10px;border-radius:6px;display:none}
+  .msg.err{background:#3b1418;color:#fca5a5;display:block}
+  .msg.ok{background:#0f2e1c;color:#86efac;display:block}
+  .msg.warn{background:#332a09;color:#fde047;display:block}
+  .banner{padding:9px 12px;border-radius:6px;font-size:12.5px;margin-bottom:12px;display:none}
+  .banner.live{background:#3b1418;color:#fca5a5;border:1px solid var(--loss);display:block}
+  .banner.demo{background:#0f2e1c;color:#86efac;border:1px solid var(--even);display:block}
+  .note,.hint{font-size:11px;color:var(--dim);margin-top:8px;line-height:1.5}
+  .grow{flex:1}
+  #console{max-height:150px;overflow-y:auto;contain:content;font-family:Consolas,monospace;font-size:11.5px;line-height:1.6}
+  #console div.t-win{color:var(--win)} #console div.t-loss{color:var(--loss)} #console div.t-warn{color:var(--warn)}
+
+  .riskOverlay{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:9999;
+    display:none;align-items:center;justify-content:center;padding:18px}
+  .riskOverlay.show{display:flex}
+  .riskBox{width:min(560px,100%);max-height:90vh;overflow:auto;background:var(--panel);
+    border:1px solid var(--loss);border-radius:12px;padding:18px;box-shadow:0 18px 70px rgba(0,0,0,.55)}
+  .riskBox h2{margin:0 0 10px;color:#fca5a5;font-size:20px}
+  .riskBox p{line-height:1.55;color:var(--txt)}
+  .riskBox .riskText{background:#251418;border:1px solid #5f252b;border-radius:8px;padding:12px;
+    font-size:12.5px;line-height:1.55}
+  .riskBox .chk{font-size:13px;color:var(--txt);margin-top:14px}
+
+
+  .trialbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 14px;
+    background:var(--panel2);border-bottom:1px solid var(--line);font-size:12px}
+  .trialbar strong{font-variant-numeric:tabular-nums}
+  .trialExpired{color:#fca5a5}
+
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Even/Odd Recovery Pro V5 OAuth</h1>
+  <span class="badge" id="connBadge">offline</span>
+  <span class="badge" id="acctBadge">no account</span>
+  <span class="badge" id="runBadge">idle</span>
+  <span class="grow"></span>
+  <span class="badge" id="symBadge">&mdash;</span>
+  <span class="badge" id="pipBadge">pip ?</span>
+</header>
+
+<div class="trialbar" id="trialBar">
+  <span class="badge warn" id="licenseBadge">trial not started</span>
+  <span id="trialText">Your 5-hour trial starts after the first successful Deriv sign-in.</span>
+  <span class="grow"></span>
+  <strong id="trialCountdown">05:00:00</strong>
+</div>
+
+
+<div class="wrap">
+
+  <!-- ============ LEFT ============ -->
+  <div>
+    <div class="card">
+      <h2>Deriv Login</h2>
+      <label>Account to trade after sign-in</label>
+      <select id="mode">
+        <option value="demo" selected>Demo</option>
+        <option value="real">Real money</option>
+      </select>
+
+      <button class="primary wide" id="btnDerivLogin" type="button">Sign in with Deriv</button>
+
+      <div class="btns">
+        <button id="btnDisconnect" type="button" disabled>Disconnect</button>
+        <button id="btnForget" type="button">Sign out</button>
+      </div>
+
+      <div class="msg" id="loginMsg"></div>
+      <div class="msg" id="connDiag"></div>
+      <div class="note">Secure OAuth 2.0 + PKCE login. No PAT or API token is entered into this page.</div>
+    </div>
+
+    <div class="card">
+      <h2>Strategy</h2>
+      <label>Market</label>
+      <select id="symbol">
+        <option value="R_10">Volatility 10</option>
+        <option value="R_25">Volatility 25</option>
+        <option value="R_50" selected>Volatility 50</option>
+        <option value="R_75">Volatility 75</option>
+        <option value="R_100">Volatility 100</option>
+        <option value="1HZ10V">Volatility 10 (1s)</option>
+        <option value="1HZ25V">Volatility 25 (1s)</option>
+        <option value="1HZ50V">Volatility 50 (1s)</option>
+        <option value="1HZ75V">Volatility 75 (1s)</option>
+        <option value="1HZ100V">Volatility 100 (1s)</option>
+      </select>
+
+      <label>Side</label>
+      <select id="side">
+        <option value="EVEN">Always EVEN</option>
+        <option value="ODD">Always ODD</option>
+        <option value="AGAINST">Against the current streak</option>
+      </select>
+
+      <label>Entry filter &mdash; wait for N opposite digits in a row (0 = off)</label>
+      <input id="filterN" type="number" min="0" max="12" step="1" value="0">
+      <div class="hint">Streaks don't change the next digit's odds. This only makes the bot
+        trade less often, which cuts total exposure.</div>
+
+      <div class="row2">
+        <div><label>Initial stake</label><input id="baseStake" type="number" min="0.35" step="0.01" value="0.50"></div>
+        <div><label>Multiplier</label><input id="mult" type="number" min="1" step="0.05" value="2.1"></div>
+      </div>
+      <div class="row2">
+        <div><label>Max recovery steps</label><input id="maxSteps" type="number" min="1" max="12" step="1" value="5"></div>
+        <div><label>Ticks</label><input id="ticks" type="number" min="1" max="10" step="1" value="1"></div>
+      </div>
+      <div class="row2">
+        <div><label>Take profit ($)</label><input id="tp" type="number" min="0" step="0.5" value="5"></div>
+        <div><label>Stop loss ($)</label><input id="sl" type="number" min="0" step="0.5" value="20"></div>
+      </div>
+      <label>Minimum payout ratio (0 = accept any)</label>
+      <input id="minPayout" type="number" min="0" max="1" step="0.01" value="0.94">
+
+      <div class="row2">
+        <div><label>Cooldown ticks after trade</label><input id="cooldownTicks" type="number" min="0" max="50" step="1" value="2"></div>
+        <div><label>Max consecutive losses</label><input id="maxConsecLoss" type="number" min="1" max="20" step="1" value="5"></div>
+      </div>
+      <div class="row2">
+        <div><label>Max stake ($)</label><input id="maxStake" type="number" min="0.35" step="0.01" value="10"></div>
+        <div><label>Recovery target ($)</label><input id="recoveryTarget" type="number" min="0" step="0.01" value="0.10"></div>
+      </div>
+      <div class="chk"><input type="checkbox" id="smartRecovery" checked><span><b>Smart recovery.</b> Size the next stake from actual accumulated loss and current payout instead of blindly multiplying.</span></div>
+      <div class="hint">Even/Odd usually pays about 0.95. Set 0.94 to skip entries when Deriv
+        prices the contract worse than usual.</div>
+
+      <div class="hint" id="ladder"></div>
+
+      <button id="btnStart" class="start wide" type="button" disabled>Start</button>
+      <button id="btnStop" class="stop wide" type="button" style="display:none">Stop</button>
+      <button id="btnReset" class="wide" type="button">Reset session</button>
+    </div>
+  </div>
+
+  <!-- ============ RIGHT ============ -->
+  <div>
+    <div class="banner" id="acctBanner"></div>
+
+    <div class="card">
+      <h2>Session</h2>
+      <div class="stats">
+        <div class="stat"><div class="k">Balance</div><div class="v" id="sBal">&mdash;</div></div>
+        <div class="stat"><div class="k">Session P/L</div><div class="v" id="sPL">0.00</div></div>
+        <div class="stat"><div class="k">Next stake</div><div class="v" id="sStake">0.50</div></div>
+        <div class="stat"><div class="k">Loss streak</div><div class="v" id="sStreak">0</div></div>
+        <div class="stat"><div class="k">Trades</div><div class="v" id="sTrades">0</div></div>
+        <div class="stat"><div class="k">Win rate</div><div class="v" id="sWR">&mdash;</div></div>
+        <div class="stat"><div class="k">Last payout</div><div class="v" id="sRatio">&mdash;</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Last digits</h2>
+      <div class="digits" id="digits"></div>
+      <div class="bar"><i id="barEven" style="width:50%"></i></div>
+      <div class="hint" id="parityTxt">even 0 &middot; odd 0</div>
+    </div>
+
+    <div class="card">
+      <h2>Trade log</h2>
+      <div class="btns" style="margin-top:0;margin-bottom:12px">
+        <button id="btnSaveCsv" type="button">Copy trades CSV</button>
+        <button id="btnSaveTxt" type="button">Copy log</button>
+        <button id="btnClearLog" type="button">Clear saved log</button>
+      </div>
+      <div id="log">
+        <table>
+          <thead><tr><th>Time</th><th>Side</th><th>Stake</th><th>Exit digit</th><th>Result</th><th>P/L</th><th>Balance</th></tr></thead>
+          <tbody id="logBody"><tr><td colspan="7" class="dim">No trades yet.</td></tr></tbody>
+        </table>
+      </div>
+      <div class="note" id="logState">Saved log: no trades yet.</div>
+    </div>
+
+    <div class="card">
+      <h2>Console</h2>
+      <div id="console"></div>
+    </div>
+  </div>
+</div>
+
+
+<div class="riskOverlay" id="liveRiskOverlay" role="dialog" aria-modal="true" aria-labelledby="liveRiskTitle">
+  <div class="riskBox">
+    <h2 id="liveRiskTitle">⚠️ REAL MONEY RISK WARNING</h2>
+    <div class="riskText">
+      This bot can place automated trades using real money. Trading involves significant financial risk.
+      Profits are not guaranteed and you may lose some or all of the money in your trading account.
+      Past performance, win rates, backtests, and previous results do not guarantee future results.
+      This software is a trading tool and is not financial advice. You are responsible for your account,
+      settings, trades, and losses. Test on a demo account first and never trade money you cannot afford to lose.
+    </div>
+    <div class="chk">
+      <input type="checkbox" id="liveRiskAgree">
+      <span>I understand that this is a REAL money account and I accept the trading risk.</span>
+    </div>
+    <div class="btns">
+      <button id="liveRiskCancel" type="button">Cancel</button>
+      <button class="stop" id="liveRiskAccept" type="button" disabled>Accept &amp; Continue</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ════════════════ CONSTANTS ════════════════
+   Deriv OAuth 2.0 + PKCE -> short-lived OAuth access token -> Options account OTP
+   -> authenticated WebSocket URL.
+*/
+const API_BASE = "https://api.derivws.com";
+const OAUTH_AUTH_URL = "https://auth.deriv.com/oauth2/auth";
+const OAUTH_CLIENT_ID = "34u1CftuqIRy71FIOBjV0";
+const OAUTH_REDIRECT_URI = "https://shemar3campbell-hash.github.io/derivbot/";
+/* After deploying oauth-worker.js, paste ONLY its public /exchange URL here. */
+const OAUTH_EXCHANGE_URL = "";
+/* Deploy license-worker.js, then paste its public base URL here, without a trailing slash. */
+const LICENSE_API_URL = "https://evenodd-license.shemar3campbell.workers.dev";
+const TRIAL_SECONDS = 5 * 60 * 60;
+let trialTimer = null;
+let licenseState = {status:"unknown", remaining:TRIAL_SECONDS, account:""};
+const K_TOKEN = "eo_oauth_token", K_MODE = "eo_mode", K_CFG = "eo_cfg_v1";
+const K_PKCE = "eo_pkce_verifier", K_STATE = "eo_oauth_state";
+const K_LOG = "eo_loglines", K_ARCH = "eo_archive";
+const MAX_LOG = 120, MAX_ARCHIVE = 500;
+const MAX_CONSOLE_DOM = 70, MAX_TABLE_ROWS = 60;
+let logSaveTimer=null;
+
+/* Fallback decimal places per symbol. The real pip size is inferred from the raw
+   tick text and overrides this as soon as a longer quote arrives. */
+const PIP_FALLBACK = {
+  R_10:3, R_25:3, R_50:4, R_75:4, R_100:2,
+  "1HZ10V":2, "1HZ25V":2, "1HZ50V":2, "1HZ75V":2, "1HZ100V":2
+};
+const WARMUP_TICKS = 15;   // don't trade until pip size has settled
+
+const $ = id => document.getElementById(id);
+
+const store = {
+  get(k){ try{ return localStorage.getItem(k) ?? sessionStorage.getItem(k); }catch(e){ return null; } },
+  set(k,v,persist){ try{ (persist?localStorage:sessionStorage).setItem(k,v);
+                         (persist?sessionStorage:localStorage).removeItem(k); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); sessionStorage.removeItem(k); }catch(e){} }
+};
+
+/* ════════════════ STATE ════════════════ */
+const S = {
+  ws:null, reqId:0, pending:new Map(),
+  appId:"", authed:false, connecting:false, connectAttempt:0,
+  account:null, currency:"USD", isReal:false, balance:0,
+  socketUrl:null, retries:0, shouldReconnect:false, pingTimer:null, reconnectTimer:null,
+  tickSubId:null, pocSubId:null,
+
+  symbol:"R_50", pipSize:2, pipSeen:0, tickCount:0, digits:[],
+  running:false, pausedForBalance:false,
+  inPosition:false, pendingBuy:false, buyUnknown:false,
+  openContractId:null, currentTrade:null,
+
+  baseStake:0.5, stake:0.5, mult:2.1, maxSteps:5, ticks:1,
+  side:"EVEN", filterN:0, tp:5, sl:20, minPayout:0.94,
+  cooldownTicks:2, cooldownLeft:0, maxConsecLoss:5, maxStake:10, recoveryTarget:0.10, smartRecovery:true,
+  streak:0, sessionPL:0, trades:0, wins:0, lastRatio:null, recoveryLoss:0,
+  logLines:[], archive:[]
+};
+
+/* ════════════════ UI HELPERS ════════════════ */
+const fmt = n => (n < 0 ? "-" : "") + "$" + Math.abs(Number(n) || 0).toFixed(2);
+function loginMsg(t,c){ const e=$("loginMsg"); e.textContent=t||""; e.className="msg "+(c||""); }
+function connDiag(t,c){ const e=$("connDiag"); e.textContent=t||""; e.className="msg "+(c||""); }
+function setBadge(id,text,kind){ const e=$(id); e.textContent=text; e.className="badge"+(kind?" "+kind:""); }
+
+function log(msg,cls){
+  const line="["+new Date().toLocaleTimeString()+"] "+msg;
+  S.logLines.push({t:line,c:cls||""});
+  while(S.logLines.length>MAX_LOG) S.logLines.shift();
+  appendLogLine(line,cls);
+  scheduleLogSave();
+}
+function scheduleLogSave(){
+  clearTimeout(logSaveTimer);
+  logSaveTimer=setTimeout(saveLog,750);
+}
+function appendLogLine(line,cls){
+  const box=$("console"), d=document.createElement("div");
+  d.className=cls||"";
+  d.textContent=line;
+  box.appendChild(d);
+  while(box.children.length>MAX_CONSOLE_DOM) box.removeChild(box.firstChild);
+  box.scrollTop=box.scrollHeight;
+}
+
+/* ════════════════ SETTINGS ════════════════ */
+const FIELDS=["symbol","side","filterN","baseStake","mult","maxSteps","ticks","tp","sl","minPayout","cooldownTicks","maxConsecLoss","maxStake","recoveryTarget","smartRecovery"];
+function saveCfg(){
+  const o={}; FIELDS.forEach(f=>o[f]=($(f).type==="checkbox"?$(f).checked:$(f).value));
+  try{ localStorage.setItem(K_CFG,JSON.stringify(o)); }catch(e){}
+}
+function loadCfg(){
+  try{
+    const o=JSON.parse(localStorage.getItem(K_CFG)||"{}");
+    FIELDS.forEach(f=>{ if(o[f]!==undefined && o[f]!==""){ if($(f).type==="checkbox") $(f).checked=!!o[f]; else $(f).value=o[f]; } });
+  }catch(e){}
+}
+function readCfg(){
+  S.symbol    = $("symbol").value;
+  S.side      = $("side").value;
+  S.filterN   = Math.max(0, parseInt($("filterN").value)||0);
+  S.baseStake = Math.max(0.35, parseFloat($("baseStake").value)||0.5);
+  S.mult      = Math.max(1, parseFloat($("mult").value)||2.1);
+  S.maxSteps  = Math.max(1, parseInt($("maxSteps").value)||5);
+  S.ticks     = Math.max(1, parseInt($("ticks").value)||1);
+  S.tp        = Math.max(0, parseFloat($("tp").value)||0);
+  S.sl        = Math.max(0, parseFloat($("sl").value)||0);
+  S.minPayout = Math.max(0, parseFloat($("minPayout").value)||0);
+  S.cooldownTicks = Math.max(0, parseInt($("cooldownTicks").value)||0);
+  S.maxConsecLoss = Math.max(1, parseInt($("maxConsecLoss").value)||5);
+  S.maxStake = Math.max(S.baseStake, parseFloat($("maxStake").value)||10);
+  S.recoveryTarget = Math.max(0, parseFloat($("recoveryTarget").value)||0);
+  S.smartRecovery = $("smartRecovery").checked;
+  saveCfg(); renderLadder();
+}
+function renderLadder(){
+  let s=S.baseStake, tot=0, parts=[];
+  for(let i=0;i<S.maxSteps;i++){ parts.push(s.toFixed(2)); tot+=s; s=Math.round(s*S.mult*100)/100; }
+  $("ladder").innerHTML="Ladder: "+parts.join(" &rarr; ")+
+    "<br>A full failed sequence costs <b>"+fmt(tot)+"</b>"+
+    (S.sl>0 && tot>S.sl ? " &mdash; more than your stop loss, so the bot halts mid-ladder."
+                        : (S.sl>0 ? " &mdash; inside your "+fmt(S.sl)+" stop loss." : ""));
+}
+
+/* ════════════════ OAUTH + REST ════════════════ */
+function currentToken(){ return sessionStorage.getItem(K_TOKEN) || ""; }
+
+function base64url(bytes){
+  let s=""; bytes.forEach(b=>s+=String.fromCharCode(b));
+  return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+}
+function randomUrlSafe(n){
+  const b=crypto.getRandomValues(new Uint8Array(n));
+  return base64url(b);
+}
+async function sha256url(text){
+  const h=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(text));
+  return base64url(new Uint8Array(h));
+}
+async function startDerivLogin(){
+  if(!OAUTH_EXCHANGE_URL){
+    loginMsg("OAuth exchange service is not configured yet. Deploy oauth-worker.js first, then add its /exchange URL to index.html.","err");
+    return;
+  }
+  const verifier=randomUrlSafe(64);
+  const state=randomUrlSafe(24);
+  const challenge=await sha256url(verifier);
+  sessionStorage.setItem(K_PKCE,verifier);
+  sessionStorage.setItem(K_STATE,state);
+  store.set(K_MODE,$("mode").value,true);
+
+  const q=new URLSearchParams({
+    response_type:"code",
+    client_id:OAUTH_CLIENT_ID,
+    redirect_uri:OAUTH_REDIRECT_URI,
+    scope:"trade",
+    state,
+    code_challenge:challenge,
+    code_challenge_method:"S256"
+  });
+  location.assign(OAUTH_AUTH_URL+"?"+q.toString());
+}
+async function handleOAuthCallback(){
+  const q=new URLSearchParams(location.search);
+  if(q.get("error")){
+    loginMsg(q.get("error_description")||q.get("error"),"err");
+    history.replaceState({},document.title,OAUTH_REDIRECT_URI);
+    return false;
+  }
+  const code=q.get("code");
+  if(!code) return false;
+
+  const returnedState=q.get("state")||"";
+  const expectedState=sessionStorage.getItem(K_STATE)||"";
+  const verifier=sessionStorage.getItem(K_PKCE)||"";
+  if(!expectedState || returnedState!==expectedState || !verifier){
+    loginMsg("OAuth security check failed. Please press Sign in with Deriv again.","err");
+    return true;
+  }
+  if(!OAUTH_EXCHANGE_URL){
+    loginMsg("OAuth exchange service is not configured yet.","err");
+    return true;
+  }
+
+  loginMsg("Finishing Deriv sign-in…","warn");
+  try{
+    const r=await fetch(OAUTH_EXCHANGE_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        code,
+        code_verifier:verifier,
+        client_id:OAUTH_CLIENT_ID,
+        redirect_uri:OAUTH_REDIRECT_URI
+      })
+    });
+    const body=await r.json().catch(()=>({}));
+    if(!r.ok || !body.access_token) throw new Error(body.error_description||body.error||"Token exchange failed.");
+    sessionStorage.setItem(K_TOKEN,body.access_token);
+    sessionStorage.removeItem(K_PKCE);
+    sessionStorage.removeItem(K_STATE);
+    history.replaceState({},document.title,OAUTH_REDIRECT_URI);
+    await doConnect();
+  }catch(e){
+    loginMsg("Deriv sign-in failed: "+(e.message||e),"err");
+  }
+  return true;
+}
+
+function apiError(body,status){
+  const arr=body && body.errors;
+  if(Array.isArray(arr) && arr.length){
+    return arr.map(x=>(x && (x.message || (x.detail&&x.detail.message) || x.code))).filter(Boolean).join(" · ");
+  }
+  return (body && (body.message || (body.error&&body.error.message))) || ("HTTP "+status);
+}
+
+async function rest(path,opts){
+  opts=opts||{};
+  const token=currentToken();
+  if(!token) throw new Error("OAuth session is missing. Sign in with Deriv again.");
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),18000);
+  try{
+    const resp=await fetch(API_BASE+path,{
+      method:opts.method||"GET",
+      headers:{
+        "Authorization":"Bearer "+token,
+        "Accept":"application/json"
+      },
+      signal:controller.signal, cache:"no-store", mode:"cors"
+    });
+    const raw=await resp.text();
+    let body={};
+    try{ body=raw?JSON.parse(raw):{}; }catch(e){ body={raw}; }
+    if(!resp.ok){
+      const err=new Error(apiError(body,resp.status));
+      err.httpStatus=resp.status; throw err;
+    }
+    return body;
+  }catch(e){
+    if(e && e.name==="AbortError") throw new Error("Deriv REST request timed out after 18 seconds.");
+    throw e;
+  }finally{ clearTimeout(timeout); }
+}
+
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+async function restRetry(path,opts,maxAttempts,label){
+  maxAttempts=Math.max(1,maxAttempts||3); label=label||path;
+  let lastErr=null;
+  for(let i=1;i<=maxAttempts;i++){
+    try{
+      connDiag(label+" · attempt "+i+"/"+maxAttempts+"…","warn");
+      const result=await rest(path,opts);
+      connDiag(label+" · OK","ok");
+      return result;
+    }catch(e){
+      lastErr=e;
+      const m=String((e&&e.message)||e||"");
+      const retryable=/timeout|timed out|abort|failed to fetch|networkerror|network request failed/i.test(m);
+      log(label+" failed on attempt "+i+"/"+maxAttempts+": "+m,"t-warn");
+      if(!retryable || i>=maxAttempts) throw e;
+      const wait=Math.min(1200*i,3000);
+      connDiag(label+" · retry "+(i+1)+"/"+maxAttempts+" in "+wait+" ms…","warn");
+      await sleep(wait);
+    }
+  }
+  throw lastErr;
+}
+
+function normalizeAccounts(body){
+  const d=body && body.data;
+  let list=[];
+  if(Array.isArray(d)) list=d;
+  else if(d && Array.isArray(d.accounts)) list=d.accounts;
+  else if(body && Array.isArray(body.accounts)) list=body.accounts;
+  else if(d && typeof d==="object" && (d.account_id||d.loginid||d.id)) list=[d];
+
+  return list.map(a=>{
+    const id=String(a.account_id!=null?a.account_id:(a.loginid!=null?a.loginid:(a.id!=null?a.id:"")));
+    const rawType=String(a.account_type!=null?a.account_type:(a.type!=null?a.type:"")).toLowerCase();
+    const type=rawType || (/^(DOT|VRT)/i.test(id)?"demo":"");
+    return {
+      loginid:id, account_id:id, account_type:type,
+      currency:a.currency||"USD", balance:Number(a.balance),
+      isReal:(type==="real"||type==="live")
+    };
+  }).filter(a=>a.loginid);
+}
+
+function authHelp(e){
+  const m=String((e&&e.message)||e||"Login failed.");
+  const code=Number((e&&e.httpStatus)||0);
+  if(/timeout|timed out|abort/i.test(m))
+    return "Deriv login request timed out after retries. Check the diagnostic line below to see whether Options accounts or OTP is the step that failed. You can press Connect to retry.";
+  if(/failed to fetch|networkerror|network request failed/i.test(m))
+    return "Browser could not reach the Deriv REST API. Try Chrome/Edge directly; if local-file access is blocked, serve this page over http://localhost.";
+  if(code===401 || /unauthori|invalid.*auth|bearer|token/i.test(m))
+    return "Deriv OAuth session was rejected or expired. Sign out, then sign in with Deriv again.";
+  if(code===403 || /access.?denied|scope|permission/i.test(m))
+    return "Access denied. This OAuth app needs the trade scope.";
+  if(/app.?id|legacy/i.test(m)) return "OAuth application configuration problem. Check the registered redirect URL and client ID.";
+  return m;
+}
+
+
+/* ════════════════ 5-HOUR SERVER TRIAL / LICENSE ════════════════ */
+function renderLicense(){
+  const badge=$("licenseBadge"), txt=$("trialText"), cd=$("trialCountdown");
+  const rem=Math.max(0,Number(licenseState.remaining)||0);
+  const h=Math.floor(rem/3600), m=Math.floor((rem%3600)/60), s=Math.floor(rem%60);
+  cd.textContent=[h,m,s].map(x=>String(x).padStart(2,"0")).join(":");
+
+  if(licenseState.status==="licensed"){
+    badge.textContent="licensed"; badge.className="badge ok";
+    txt.textContent="Full license active.";
+    cd.textContent="FULL";
+  }else if(licenseState.status==="trial"){
+    badge.textContent="5-hour trial"; badge.className="badge warn";
+    txt.textContent="Trial is tied to this Deriv account.";
+  }else if(licenseState.status==="expired"){
+    badge.textContent="trial expired"; badge.className="badge bad";
+    txt.textContent="Trial expired — purchase/activate the bot to continue.";
+    cd.textContent="00:00:00";
+  }else{
+    badge.textContent="trial not started"; badge.className="badge warn";
+    txt.textContent="Your 5-hour trial starts after the first successful Deriv sign-in.";
+  }
+}
+
+async function checkLicense(accountId){
+  if(!LICENSE_API_URL){
+    throw new Error("License server is not configured yet.");
+  }
+  const token=currentToken();
+  const r=await fetch(LICENSE_API_URL+"/trial/check",{
+    method:"POST",
+    headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},
+    body:JSON.stringify({account_id:String(accountId)})
+  });
+  const b=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(b.error||"License check failed.");
+  licenseState={
+    status:b.status||"expired",
+    remaining:Number(b.remaining_seconds)||0,
+    account:String(accountId)
+  };
+  renderLicense();
+  return licenseState;
+}
+
+function startTrialClock(){
+  clearInterval(trialTimer);
+  renderLicense();
+  trialTimer=setInterval(async ()=>{
+    if(licenseState.status==="licensed") return;
+    if(licenseState.status==="trial"){
+      licenseState.remaining=Math.max(0,licenseState.remaining-1);
+      renderLicense();
+      if(licenseState.remaining<=0){
+        licenseState.status="expired";
+        renderLicense();
+        stopBot("5-hour trial expired.");
+        loginMsg("Trial expired — purchase/activate the bot to continue.","err");
+      }
+    }
+    // Re-check server periodically so changing the device clock/storage cannot extend the trial.
+    if(S.authed && S.account && Date.now()%60000<1100){
+      try{
+        await checkLicense(S.account.loginid);
+        if(licenseState.status==="expired"){
+          stopBot("5-hour trial expired.");
+          loginMsg("Trial expired — purchase/activate the bot to continue.","err");
+        }
+      }catch(e){}
+    }
+  },1000);
+}
+
+function licenseAllowsTrading(){
+  return licenseState.status==="licensed" ||
+    (licenseState.status==="trial" && licenseState.remaining>0);
+}
+
+/* ════════════════ CONNECT ════════════════ */
+function envPreflight(){
+  if(location.protocol==="file:"){
+    connDiag("Local HTML detected. If the browser blocks the REST request, run it through Start_EvenOdd.bat so it loads from http://localhost.","warn");
+    log("Local file mode — attempting Deriv connection directly.","t-warn");
+  }
+  return true;
+}
+
+
+function confirmLiveRisk(){
+  return new Promise(resolve=>{
+    const overlay=$("liveRiskOverlay");
+    const agree=$("liveRiskAgree");
+    const accept=$("liveRiskAccept");
+    const cancel=$("liveRiskCancel");
+
+    agree.checked=false;
+    accept.disabled=true;
+    overlay.classList.add("show");
+
+    const cleanup=()=>{
+      overlay.classList.remove("show");
+      agree.onchange=null; accept.onclick=null; cancel.onclick=null;
+    };
+    agree.onchange=()=>{ accept.disabled=!agree.checked; };
+    cancel.onclick=()=>{ cleanup(); resolve(false); };
+    accept.onclick=()=>{
+      if(!agree.checked) return;
+      cleanup(); resolve(true);
+    };
+  });
+}
+
+async function doConnect(){
+  if(S.connecting) return;
+  clearTimeout(S.reconnectTimer);
+  connDiag("");
+  const tk=currentToken();
+  if(!tk){ loginMsg("Press Sign in with Deriv first.","err"); return; }
+  if(!envPreflight()) return;
+
+  const attempt=++S.connectAttempt;
+  if(S.ws){ try{ S.shouldReconnect=false; S.ws.close(); }catch(e){} S.ws=null; }
+  S.authed=false; S.connecting=true; S.appId=OAUTH_CLIENT_ID;
+  $("btnDerivLogin").disabled=true;
+
+  store.set(K_MODE,$("mode").value,true);
+
+  setBadge("connBadge","connecting","warn");
+  loginMsg("Connecting "+($("mode").value==="demo"?"Demo":"LIVE")+" Options account…","warn");
+
+  try{
+    connDiag("Step 1/3 · loading Options accounts…","warn");
+    const accounts=normalizeAccounts(await restRetry("/trading/v1/options/accounts",null,2,"Step 1/3 · Options accounts"));
+    if(!accounts.length) throw new Error("No Options accounts were returned for this Deriv login.");
+
+    const wanted=$("mode").value;
+    const acct=accounts.find(a=>(a.isReal?"real":"demo")===wanted);
+    if(!acct){
+      throw new Error("No "+wanted+" Options account on this Deriv login. Found: "+
+        accounts.map(a=>a.loginid+" ("+(a.isReal?"real":"demo")+")").join(", "));
+    }
+    if(attempt!==S.connectAttempt) return;
+
+    if(acct.isReal){
+      connDiag("REAL account selected · waiting for risk confirmation…","warn");
+      const accepted=await confirmLiveRisk();
+      if(!accepted){
+        S.connecting=false;
+        $("btnDerivLogin").disabled=false;
+        loginMsg("Real-money login cancelled. No trade connection was opened.","warn");
+        connDiag("");
+        setBadge("connBadge","offline","bad");
+        return;
+      }
+    }
+
+    connDiag("Checking 5-hour trial/license for "+acct.loginid+"…","warn");
+    const lic=await checkLicense(acct.loginid);
+    startTrialClock();
+    if(lic.status==="expired"){
+      S.connecting=false;
+      $("btnDerivLogin").disabled=false;
+      loginMsg("Your 5-hour trial has expired. Purchase/activate the bot to continue.","err");
+      connDiag("Trial expired · trading connection blocked.","err");
+      setBadge("connBadge","trial expired","bad");
+      return;
+    }
+
+    connDiag("Step 2/3 · requesting secure OTP for "+acct.loginid+"…","warn");
+    const otp=await restRetry("/trading/v1/options/accounts/"+encodeURIComponent(acct.loginid)+"/otp",
+                              {method:"POST"},2,"Step 2/3 · OTP for "+acct.loginid);
+    const url=otp && otp.data && otp.data.url;
+    if(!url || !/^wss:\/\//i.test(url)) throw new Error("Deriv did not return an authenticated WebSocket URL.");
+    if(attempt!==S.connectAttempt) return;
+
+    // A different account starts a clean session, so demo and real figures never blend.
+    if(S.account && S.account.loginid!==acct.loginid && S.trades>0){
+      log("Switched account "+S.account.loginid+" → "+acct.loginid+
+          " · session counters reset (saved log kept).","t-warn");
+      S.sessionPL=0; S.trades=0; S.wins=0; S.streak=0; S.recoveryLoss=0; S.cooldownLeft=0; S.stake=S.baseStake;
+      updateStats();
+    }
+    S.account=acct; S.currency=acct.currency; S.isReal=acct.isReal;
+    S.socketUrl=url; S.shouldReconnect=true; S.retries=0;
+
+    connDiag("Step 3/3 · opening authenticated socket…","warn");
+    openSocket();
+  }catch(e){
+    if(attempt!==S.connectAttempt) return;
+    const m=authHelp(e);
+    loginMsg(m,"err");
+    connDiag("Connection failed: "+m,"err");
+    setBadge("connBadge","offline","bad");
+    log("Login failed: "+m,"t-loss");
+    S.connecting=false;
+    $("btnDerivLogin").disabled=false;
+  }
+}
+
+function openSocket(){
+  let ws;
+  try{ ws=new WebSocket(S.socketUrl); }
+  catch(e){
+    log("Socket error: "+e.message,"t-loss");
+    S.connecting=false; $("btnDerivLogin").disabled=false; return;
+  }
+  S.ws=ws;
+
+  ws.onopen=()=>{
+    S.authed=true; S.connecting=false; S.retries=0;
+    setBadge("connBadge","connected","ok");
+    setBadge("acctBadge",S.account.loginid+" · "+S.currency,S.isReal?"bad":"ok");
+    showAccountBanner();
+    loginMsg("Connected as "+S.account.loginid+".","ok");
+    connDiag("");
+    log("Authenticated socket open · "+S.account.loginid+" ("+(S.isReal?"REAL":"demo")+")",
+        S.isReal?"t-loss":"t-win");
+
+    $("btnDisconnect").disabled=false;
+    $("btnDerivLogin").disabled=false;
+    $("btnStart").disabled=false;
+
+    send({balance:1,subscribe:1}).catch(()=>{});
+    clearInterval(S.pingTimer);
+    S.pingTimer=setInterval(()=>{ send({ping:1}).catch(()=>{}); },30000);
+
+    // Recover a contract that was open across a reconnect.
+    if(S.openContractId){
+      log("Re-subscribing to open contract "+S.openContractId);
+      send({proposal_open_contract:1,contract_id:S.openContractId,subscribe:1}).catch(()=>{});
+    }
+    subscribeTicks();
+  };
+
+  ws.onmessage=ev=>{
+    let m;
+    try{ m=JSON.parse(ev.data); }catch(e){ return; }
+
+    // Pip size is inferred from the raw text, before JSON.parse drops trailing zeros.
+    if(m.msg_type==="tick"){
+      const g=/"quote"\s*:\s*"?-?\d+(?:\.(\d+))?"?/.exec(ev.data);
+      const dec=g && g[1] ? g[1].length : 0;
+      if(dec>S.pipSeen) S.pipSeen=dec;
+    }
+
+    if(m.req_id && S.pending.has(m.req_id)){
+      const p=S.pending.get(m.req_id);
+      S.pending.delete(m.req_id);
+      if(m.error) p.reject(Object.assign(new Error(m.error.message||"API error"),{code:m.error.code}));
+      else p.resolve(m);
+    } else if(m.error){
+      log((m.error.code||"Error")+": "+(m.error.message||""),"t-loss");
+    }
+    routeStream(m);
+  };
+
+  ws.onerror=()=>log("Socket error.","t-loss");
+
+  ws.onclose=()=>{
+    S.authed=false;
+    clearInterval(S.pingTimer);
+    S.pending.forEach(p=>p.reject(new Error("socket closed")));
+    S.pending.clear();
+    $("btnStart").disabled=true;
+    setBadge("connBadge","offline","bad");
+
+    if(S.shouldReconnect){
+      // The OTP socket URL is single-use, so a reconnect re-runs the whole login.
+      const delay=Math.min(2000*Math.pow(2,S.retries++),30000);
+      log("Connection lost. Re-authenticating in "+(delay/1000)+"s…","t-warn");
+      setBadge("connBadge","reconnecting","warn");
+      clearTimeout(S.reconnectTimer);
+      S.reconnectTimer=setTimeout(()=>{ S.connecting=false; doConnect(); },delay);
+    }else{
+      $("btnDerivLogin").disabled=false;
+      $("btnDisconnect").disabled=true;
+      log("Disconnected.");
+    }
+  };
+}
+
+function send(payload){
+  return new Promise((resolve,reject)=>{
+    if(!S.ws || S.ws.readyState!==1) return reject(new Error("not connected"));
+    const id=++S.reqId;
+    S.pending.set(id,{resolve,reject});
+    S.ws.send(JSON.stringify(Object.assign({},payload,{req_id:id})));
+    setTimeout(()=>{
+      if(S.pending.has(id)){ S.pending.delete(id); reject(new Error("timed out")); }
+    },30000);
+  });
+}
+
+function showAccountBanner(){
+  const b=$("acctBanner");
+  if(S.isReal){
+    b.className="banner live";
+    b.innerHTML="<b>REAL money account.</b> "+S.account.loginid+" — every trade uses your own funds.";
+  }else{
+    b.className="banner demo";
+    b.innerHTML="<b>Demo account.</b> "+S.account.loginid+" — no real money at risk.";
+  }
+}
+
+function testPublicConnection(){
+  const url="wss://api.derivws.com/trading/v1/options/ws/public";
+  connDiag("Testing Deriv public WebSocket…","warn");
+  let done=false, ws=null;
+  const finish=(msg,cls)=>{
+    if(done)return; done=true; clearTimeout(timer);
+    connDiag(msg,cls);
+    try{ if(ws && ws.readyState<=1) ws.close(); }catch(e){}
+  };
+  try{
+    ws=new WebSocket(url);
+    ws.onopen=()=>finish("Public WebSocket OK. Network can reach Deriv; if login still fails, check the REST step shown during Connect.","ok");
+    ws.onerror=()=>finish("Public WebSocket test failed. This browser/network may be blocking the Deriv connection.","err");
+  }catch(e){ finish("Public WebSocket test failed: "+e.message,"err"); }
+  const timer=setTimeout(()=>finish("Public WebSocket test timed out after 10 seconds.","err"),10000);
+}
+
+function doDisconnect(){
+  S.connectAttempt++;
+  S.shouldReconnect=false;
+  stopBot("Disconnected");
+  clearTimeout(S.reconnectTimer);
+  clearInterval(S.pingTimer);
+  if(S.ws && S.ws.readyState===1){
+    send({forget_all:["ticks","proposal_open_contract","balance"]}).catch(()=>{});
+  }
+  if(S.ws){ try{ S.ws.close(); }catch(e){} }
+  S.connecting=false;
+  $("btnDerivLogin").disabled=false;
+  $("btnDisconnect").disabled=true;
+  $("btnStart").disabled=true;
+  setBadge("connBadge","offline","bad");
+  setBadge("acctBadge","no account");
+  $("acctBanner").className="banner";
+}
+
+function doForget(){
+  doDisconnect();
+  [K_TOKEN,K_MODE,K_PKCE,K_STATE].forEach(k=>store.del(k));
+  try{ sessionStorage.removeItem(K_TOKEN); }catch(e){}
+  loginMsg("Signed out on this device.","ok");
+}
+
+/* ════════════════ SAVING THE LOG ════════════════ */
+function saveLog(){
+  try{ localStorage.setItem(K_LOG,JSON.stringify(S.logLines)); }catch(e){}
+}
+function saveArchive(){
+  try{ localStorage.setItem(K_ARCH,JSON.stringify(S.archive.slice(-MAX_ARCHIVE))); }catch(e){}
+  renderLogState();
+}
+function renderLogState(){
+  const el=$("logState"); if(!el) return;
+  if(!S.archive.length){ el.textContent="Saved log: no trades yet."; return; }
+  const g={demo:{n:0,w:0,pl:0},real:{n:0,w:0,pl:0}};
+  S.archive.forEach(r=>{
+    const k=(r.real==="real")?"real":"demo";
+    g[k].n++; g[k].pl+=Number(r.profit)||0; if(r.result==="WIN") g[k].w++;
+  });
+  const part=(k,label)=> g[k].n
+    ? label+" "+g[k].n+" trade"+(g[k].n===1?"":"s")+" · "+
+      (g[k].w/g[k].n*100).toFixed(1)+"% wins · net "+fmt(g[k].pl)
+    : label+" none yet";
+  const total=g.demo.n+g.real.n, tw=g.demo.w+g.real.w, tpl=g.demo.pl+g.real.pl;
+  el.innerHTML="Saved log: "+total+" trade"+(total===1?"":"s")+" · "+
+    (tw/total*100).toFixed(1)+"% wins · net "+fmt(tpl)+
+    "<br>"+part("demo","Demo:")+"<br>"+part("real","Real:")+
+    (g.demo.n>=30 && g.real.n>=30
+      ? "<br>Both sides have enough trades to compare win rates directly."
+      : "");
+}
+function restoreSaved(){
+  try{
+    const ll=JSON.parse(localStorage.getItem(K_LOG)||"[]");
+    if(Array.isArray(ll)){
+      S.logLines=ll.slice(-MAX_LOG);
+      S.logLines.forEach(x=>appendLogLine(x.t,x.c));
+    }
+  }catch(e){}
+  try{
+    const ar=JSON.parse(localStorage.getItem(K_ARCH)||"[]");
+    if(Array.isArray(ar)) S.archive=ar;
+  }catch(e){}
+  renderArchiveTable();
+  renderLogState();
+}
+function renderArchiveTable(){
+  const body=$("logBody");
+  if(!S.archive.length){
+    body.innerHTML="<tr><td colspan='7' class='dim'>No trades yet.</td></tr>";
+    return;
+  }
+  body.innerHTML="";
+  S.archive.slice(-MAX_TABLE_ROWS).forEach(r=>{
+    const won=r.result==="WIN";
+    const tr=document.createElement("tr");
+    tr.innerHTML=
+      "<td class='dim'>"+(r.iso?new Date(r.iso).toLocaleTimeString():"")+"</td>"+
+      "<td>"+(r.side||"")+"</td>"+
+      "<td>"+fmt(r.stake)+"</td>"+
+      "<td>"+(r.exitDigit!=null?r.exitDigit:"—")+"</td>"+
+      "<td class='"+(won?"w":"l")+"'>"+(won?"WON":"LOST")+"</td>"+
+      "<td class='"+(won?"w":"l")+"'>"+fmt(r.profit)+"</td>"+
+      "<td class='dim'>"+fmt(r.balance)+"</td>";
+    body.insertBefore(tr,body.firstChild);
+  });
+}
+
+function csvEscape(v){
+  const x=String(v==null?"":v);
+  return /[",\n\r]/.test(x) ? '"'+x.replace(/"/g,'""')+'"' : x;
+}
+async function copyExport(name,text){
+  // Mobile-safe export: never trigger Acode/Android DownloadManager.
+  // Copy plain text directly to the clipboard instead.
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(text);
+    }else{
+      const ta=document.createElement("textarea");
+      ta.value=text; ta.setAttribute("readonly","");
+      ta.style.position="fixed"; ta.style.left="-9999px"; ta.style.top="0";
+      document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0,ta.value.length);
+      const ok=document.execCommand("copy"); ta.remove();
+      if(!ok) throw new Error("clipboard copy failed");
+    }
+    alert(name+" copied to clipboard. You can paste it into ChatGPT, Notes, or another app.");
+    return true;
+  }catch(e){
+    // Last-resort manual copy box; still no download URL is created.
+    const w=window.prompt("Automatic clipboard copy was blocked. Long-press and copy the text below:",text);
+    return w!==null;
+  }
+}
+function stamp(){ return new Date().toISOString().replace(/[:.]/g,"-").slice(0,19); }
+
+async function saveTradesCSV(){
+  if(!S.archive.length){ log("Nothing to export — no settled trades saved yet.","t-warn"); return; }
+  const head=["#","Time","ISO Time","Account","Account Type","Symbol","Side","Ticks",
+    "Entry Digit","Exit Digit","Streak Before","Recovery Step","Stake","Payout","Payout %",
+    "Result","P/L","Session Total","Balance After","Currency"];
+  const rows=[head];
+  S.archive.forEach((r,i)=>{
+    rows.push([ i+1, r.iso?new Date(r.iso).toLocaleTimeString():"", r.iso||"",
+      r.account||"", r.real||"", r.symbol||"", r.side||"", r.ticks||"",
+      r.entryDigit!=null?r.entryDigit:"", r.exitDigit!=null?r.exitDigit:"",
+      r.streakBefore!=null?r.streakBefore:"", r.recoveryStep!=null?r.recoveryStep:"",
+      Number(r.stake||0).toFixed(2), r.payout!=null?Number(r.payout).toFixed(2):"",
+      r.ratio!=null?(r.ratio*100).toFixed(2):"",
+      r.result||"", Number(r.profit||0).toFixed(2),
+      r.sessionTotal!=null?Number(r.sessionTotal).toFixed(2):"",
+      r.balance!=null?Number(r.balance).toFixed(2):"", r.currency||"" ]);
+  });
+  const ok=await copyExport("EvenOdd_Trades_"+stamp()+".csv",
+    rows.map(r=>r.map(csvEscape).join(",")).join("\r\n"));
+  if(ok) log("Copied "+S.archive.length+" trades as CSV to clipboard.","t-win");
+}
+
+async function saveLogTXT(){
+  if(!S.logLines.length){ log("Nothing to save — the log is empty.","t-warn"); return; }
+  const header="Even/Odd Recovery — session log\r\nSaved: "+new Date().toString()+
+    "\r\nLines: "+S.logLines.length+"\r\n"+"-".repeat(60)+"\r\n";
+  const ok=await copyExport("EvenOdd_Log_"+stamp()+".txt",
+    header+S.logLines.map(x=>x.t).join("\r\n"));
+  if(ok) log("Copied "+S.logLines.length+" log lines to clipboard.","t-win");
+}
+
+function clearSavedLog(){
+  if(!confirm("Clear the saved log and trade archive on this browser?\n\nThis cannot be undone — export first if you want a copy.")) return;
+  S.logLines=[]; S.archive=[];
+  try{ localStorage.removeItem(K_LOG); localStorage.removeItem(K_ARCH); }catch(e){}
+  $("console").innerHTML="";
+  $("logBody").innerHTML="<tr><td colspan='7' class='dim'>No trades yet.</td></tr>";
+  saveArchive();
+  log("Saved log cleared.","t-warn");
+}
+
+/* ════════════════ STREAM ROUTING ════════════════ */
+function routeStream(m){
+  if(m.msg_type==="balance" && m.balance){
+    S.balance=Number(m.balance.balance)||0;
+    S.currency=m.balance.currency||S.currency;
+    $("sBal").textContent=fmt(S.balance);
+    if(S.pausedForBalance && S.balance>=S.stake){
+      S.pausedForBalance=false;
+      log("Balance restored — resuming at "+fmt(S.stake)+".","t-win");
+      setBadge("runBadge","running","ok");
+    }
+  }
+  else if(m.msg_type==="tick" && m.tick){
+    if(m.subscription && m.subscription.id) S.tickSubId=m.subscription.id;
+    onTick(m.tick);
+  }
+  else if(m.msg_type==="proposal_open_contract" && m.proposal_open_contract){
+    if(m.subscription && m.subscription.id) S.pocSubId=m.subscription.id;
+    onContract(m.proposal_open_contract);
+  }
+}
+
+/* ════════════════ TICKS + DIGITS ════════════════ */
+function subscribeTicks(){
+  if(S.tickSubId){ send({forget:S.tickSubId}).catch(()=>{}); S.tickSubId=null; }
+  S.digits=[]; S.tickCount=0; S.pipSeen=0;
+  S.pipSize=PIP_FALLBACK[S.symbol]!==undefined?PIP_FALLBACK[S.symbol]:2;
+  renderDigits();
+  $("symBadge").textContent=$("symbol").selectedOptions[0].textContent;
+  send({ticks:S.symbol,subscribe:1})
+    .then(()=>log("Subscribed to "+S.symbol+"."))
+    .catch(e=>log("Tick subscription failed: "+(e.message||e),"t-loss"));
+}
+
+function digitOf(quote,pip){
+  const s=Number(quote).toFixed(pip);
+  return parseInt(s[s.length-1],10);
+}
+
+function onTick(tick){
+  const price=Number(tick.quote);
+  if(!isFinite(price)) return;
+
+  // pip_size if the API sends it, otherwise the widest decimal count seen so far
+  if(tick.pip_size!==undefined && tick.pip_size!==null) S.pipSize=Number(tick.pip_size);
+  else if(S.pipSeen>S.pipSize) S.pipSize=S.pipSeen;
+  $("pipBadge").textContent="pip "+S.pipSize+(S.tickCount<WARMUP_TICKS?" · warming":"");
+
+  S.tickCount++;
+  S.digits.push(digitOf(price,S.pipSize));
+  if(S.digits.length>50) S.digits.shift();
+  renderDigits();
+  if(S.cooldownLeft>0) S.cooldownLeft--;
+  maybeTrade();
+}
+
+function renderDigits(){
+  const last=S.digits.slice(-20);
+  $("digits").innerHTML=last.map((n,i)=>
+    '<div class="d '+(n%2===0?"even":"odd")+(i===last.length-1?" last":"")+'">'+n+"</div>").join("");
+  const ev=S.digits.filter(n=>n%2===0).length;
+  const od=S.digits.length-ev;
+  $("barEven").style.width=(S.digits.length?(ev/S.digits.length)*100:50)+"%";
+  $("parityTxt").textContent="even "+ev+" · odd "+od+" (last "+S.digits.length+" ticks)";
+}
+
+/* ════════════════ STRATEGY ════════════════ */
+function currentStreak(){
+  if(!S.digits.length) return {parity:null,len:0};
+  const parity=S.digits[S.digits.length-1]%2===0?"EVEN":"ODD";
+  let len=0;
+  for(let i=S.digits.length-1;i>=0;i--){
+    if((S.digits[i]%2===0?"EVEN":"ODD")!==parity) break;
+    len++;
+  }
+  return {parity,len};
+}
+
+function pickSide(){
+  if(S.side==="AGAINST"){
+    const st=currentStreak();
+    if(!st.parity) return null;
+    return st.parity==="EVEN"?"ODD":"EVEN";
+  }
+  return S.side;
+}
+
+function filterPasses(side){
+  if(S.filterN<=0) return true;
+  const st=currentStreak();
+  const opposite=side==="EVEN"?"ODD":"EVEN";
+  return st.parity===opposite && st.len>=S.filterN;
+}
+
+function maybeTrade(){
+  if(!licenseAllowsTrading()){
+    if(S.running) stopBot("Trial/license inactive.");
+    return;
+  }
+  if(!S.running || S.pausedForBalance || S.inPosition || S.pendingBuy || S.buyUnknown) return;
+  if(!S.authed) return;
+  if(S.tickCount<WARMUP_TICKS) return;
+  if(S.cooldownLeft>0) return;
+  if(S.streak>=S.maxConsecLoss) return stopBot("Consecutive-loss safety limit reached: "+S.streak);
+
+  if(S.tp>0 && S.sessionPL>=S.tp)  return stopBot("Take profit reached: "+fmt(S.sessionPL));
+  if(S.sl>0 && S.sessionPL<=-S.sl) return stopBot("Stop loss reached: "+fmt(S.sessionPL));
+
+  if(S.balance<S.stake){
+    S.pausedForBalance=true;
+    setBadge("runBadge","paused — low balance","warn");
+    log("Balance "+fmt(S.balance)+" is below the next stake "+fmt(S.stake)+
+        ". Paused; it resumes on the same stake once the balance covers it.","t-warn");
+    return;
+  }
+
+  const side=pickSide();
+  if(!side || !filterPasses(side)) return;
+  placeTrade(side);
+}
+
+async function placeTrade(side){
+  const type=side==="EVEN"?"DIGITEVEN":"DIGITODD";
+  const stakeUsed=S.stake;
+  S.pendingBuy=true; S.inPosition=true;
+
+  // 1. price it
+  let q;
+  try{
+    const r=await send({
+      proposal:1, amount:Number(stakeUsed.toFixed(2)), basis:"stake",
+      contract_type:type, currency:S.currency,
+      duration:S.ticks, duration_unit:"t",
+      underlying_symbol:S.symbol
+    });
+    const p=r.proposal, ask=Number(p.ask_price), pay=Number(p.payout);
+    q={id:p.id, ask, payout:pay, ratio:(pay-ask)/ask};
+  }catch(e){
+    S.pendingBuy=false; S.inPosition=false;
+    log("Pricing failed: "+(e.message||e),"t-loss");
+    return;
+  }
+
+  S.lastRatio=q.ratio;
+  $("sRatio").textContent=(q.ratio*100).toFixed(2)+"%";
+
+  if(S.minPayout>0 && q.ratio<S.minPayout-1e-9){
+    S.pendingBuy=false; S.inPosition=false;
+    log("Skipped "+side+" — payout "+(q.ratio*100).toFixed(2)+"% under minimum "+
+        (S.minPayout*100).toFixed(2)+"%","t-warn");
+    return;
+  }
+
+  // 2. buy it
+  const st=currentStreak();
+  S.currentTrade={side,type,stake:stakeUsed,buyPrice:q.ask,payout:q.payout,ratio:q.ratio,
+    entryDigit:S.digits.length?S.digits[S.digits.length-1]:null,
+    streakBefore:st.len, streakParity:st.parity, recoveryStep:S.streak};
+  try{
+    const r=await send({buy:q.id,price:q.ask});
+    if(!r || !r.buy || !r.buy.contract_id) throw new Error("Buy reply did not include a contract ID.");
+    S.openContractId=r.buy.contract_id;
+    S.currentTrade.contractId=r.buy.contract_id;
+    S.currentTrade.buyPrice=Number(r.buy.buy_price);
+    S.currentTrade.payout=Number(r.buy.payout);
+    S.pendingBuy=false; S.buyUnknown=false;
+    log("BUY "+side+" "+fmt(S.currentTrade.buyPrice)+" on "+S.symbol+" "+S.ticks+"t · payout "+
+        fmt(S.currentTrade.payout)+" ("+(q.ratio*100).toFixed(2)+"%)");
+    try{
+      await send({proposal_open_contract:1,contract_id:S.openContractId,subscribe:1});
+    }catch(e){
+      S.running=false;
+      log("Contract opened but tracking failed. Bot stopped to prevent duplicate entries.","t-loss");
+      setBadge("runBadge","idle");
+      $("btnStart").style.display=""; $("btnStop").style.display="none";
+    }
+  }catch(e){
+    const msg=String(e.message||e);
+    S.pendingBuy=false;
+    if(/timed out|timeout|socket closed|connection|network/i.test(msg)){
+      // Never re-enter while a buy's fate is unknown.
+      S.buyUnknown=true; S.running=false; S.inPosition=true;
+      log("BUY status unknown: "+msg+". BOT STOPPED. Check your Deriv open positions before resetting.","t-loss");
+      loginMsg("Safety stop: BUY result unknown. Check your Deriv account for an open contract.","err");
+      setBadge("runBadge","buy unknown","bad");
+      $("btnStart").style.display=""; $("btnStop").style.display="none";
+    }else{
+      S.inPosition=false; S.currentTrade=null;
+      log("BUY rejected: "+msg,"t-loss");
+    }
+  }
+}
+
+function onContract(poc){
+  if(!S.currentTrade || String(poc.contract_id)!==String(S.currentTrade.contractId)) return;
+  if(!poc.is_sold) return;
+
+  const profit=Number(poc.profit)||0;
+  const won=profit>0;
+  const stakeUsed=S.currentTrade.stake;
+  const side=S.currentTrade.side;
+  let exitDigit="—";
+  if(poc.exit_tick!==undefined && poc.exit_tick!==null) exitDigit=digitOf(poc.exit_tick,S.pipSize);
+
+  const t=S.currentTrade;
+  if(S.pocSubId){ send({forget:S.pocSubId}).catch(()=>{}); S.pocSubId=null; }
+  S.openContractId=null; S.currentTrade=null; S.inPosition=false;
+
+  S.trades++;
+  if(won) S.wins++;
+  S.sessionPL+=profit;
+
+  // Recovery engine: capped, payout-aware, and never above the configured max stake.
+  S.cooldownLeft=S.cooldownTicks;
+  if(won){
+    S.stake=S.baseStake; S.streak=0; S.recoveryLoss=0;
+  }else{
+    S.streak++; S.recoveryLoss+=Math.abs(profit);
+    if(S.streak>=S.maxSteps){
+      S.stake=S.baseStake; S.streak=0; S.recoveryLoss=0;
+      log("Max recovery steps hit — recovery cycle closed and stake reset to "+fmt(S.baseStake)+".","t-warn");
+    }else{
+      let next=S.stake*S.mult;
+      if(S.smartRecovery && S.lastRatio>0){
+        next=(S.recoveryLoss+S.recoveryTarget)/S.lastRatio;
+      }
+      next=Math.max(S.baseStake,Math.round(next*100)/100);
+      if(next>S.maxStake){
+        S.stake=S.baseStake; S.streak=0; S.recoveryLoss=0;
+        stopBot("Recovery requires "+fmt(next)+" which exceeds max stake "+fmt(S.maxStake));
+      }else S.stake=next;
+    }
+  }
+
+  S.archive.push({
+    iso:new Date().toISOString(),
+    account:S.account?S.account.loginid:"", real:S.isReal?"real":"demo",
+    symbol:S.symbol, side, ticks:S.ticks,
+    entryDigit:t.entryDigit, exitDigit:(exitDigit==="—"?null:exitDigit),
+    streakBefore:t.streakBefore, recoveryStep:t.recoveryStep,
+    stake:stakeUsed, payout:t.payout, ratio:t.ratio,
+    result:won?"WIN":"LOSS", profit, sessionTotal:S.sessionPL,
+    balance:S.balance, currency:S.currency
+  });
+  while(S.archive.length>MAX_ARCHIVE) S.archive.shift();
+  saveArchive();
+
+  logTrade(side,stakeUsed,exitDigit,won,profit);
+  updateStats();
+  log((won?"WON ":"LOST ")+side+" "+fmt(stakeUsed)+" → "+fmt(profit)+
+      " · session "+fmt(S.sessionPL),won?"t-win":"t-loss");
+
+  if(S.tp>0 && S.sessionPL>=S.tp)  return stopBot("Take profit reached: "+fmt(S.sessionPL));
+  if(S.sl>0 && S.sessionPL<=-S.sl) return stopBot("Stop loss reached: "+fmt(S.sessionPL));
+}
+
+function updateStats(){
+  $("sPL").textContent=fmt(S.sessionPL);
+  $("sPL").className="v "+(S.sessionPL>0?"w":S.sessionPL<0?"l":"");
+  $("sStake").textContent=fmt(S.stake);
+  $("sStreak").textContent=S.streak;
+  $("sTrades").textContent=S.trades;
+  $("sWR").textContent=S.trades?Math.round((S.wins/S.trades)*100)+"%":"—";
+}
+
+function logTrade(side,stake,digit,won,profit){
+  const body=$("logBody");
+  if(body.children.length===1 && body.children[0].children.length===1) body.innerHTML="";
+  const tr=document.createElement("tr");
+  tr.innerHTML=
+    "<td class='dim'>"+new Date().toLocaleTimeString()+"</td>"+
+    "<td>"+side+"</td>"+
+    "<td>"+fmt(stake)+"</td>"+
+    "<td>"+digit+"</td>"+
+    "<td class='"+(won?"w":"l")+"'>"+(won?"WON":"LOST")+"</td>"+
+    "<td class='"+(won?"w":"l")+"'>"+fmt(profit)+"</td>"+
+    "<td class='dim'>"+fmt(S.balance)+"</td>";
+  body.insertBefore(tr,body.firstChild);
+  while(body.children.length>MAX_TABLE_ROWS) body.removeChild(body.lastChild);
+}
+
+/* ════════════════ START / STOP ════════════════ */
+function startBot(){
+  if(!licenseAllowsTrading()){
+    loginMsg("Trial expired or license inactive. Trading is blocked.","err");
+    return;
+  }
+  readCfg();
+  if(!S.authed){ loginMsg("Connect an account first.","err"); return; }
+  if(S.buyUnknown){
+    loginMsg("A previous buy's result is unknown. Press Reset session once you've checked Deriv.","err");
+    return;
+  }
+  if(S.isReal && !confirm(
+      "This is a REAL money account ("+S.account.loginid+").\n\n"+
+      "The bot will place live trades with your own funds. Continue?")) return;
+  S.running=true; S.pausedForBalance=false;
+  S.stake=S.baseStake; S.streak=0;
+  setBadge("runBadge","running","ok");
+  $("btnStart").style.display="none";
+  $("btnStop").style.display="";
+  log("Started on "+S.symbol+" · "+S.side+" · base "+fmt(S.baseStake)+" ×"+S.mult+
+      " capped at "+S.maxSteps+" steps.","t-win");
+  updateStats();
+}
+
+function stopBot(reason){
+  if(!S.running && !reason) return;
+  S.running=false; S.pausedForBalance=false;
+  setBadge("runBadge","idle");
+  $("btnStart").style.display="";
+  $("btnStop").style.display="none";
+  if(reason) log(reason+" — bot stopped.",S.sessionPL>=0?"t-win":"t-loss");
+}
+
+function resetSession(){
+  S.sessionPL=0; S.trades=0; S.wins=0; S.streak=0; S.recoveryLoss=0; S.cooldownLeft=0;
+  S.stake=S.baseStake;
+  S.buyUnknown=false; S.inPosition=false; S.pendingBuy=false;
+  S.openContractId=null; S.currentTrade=null;
+  updateStats();
+  loginMsg("Session counters reset. The saved log is kept — use Clear saved log to wipe it.","ok");
+  log("Session reset (saved log kept: "+S.archive.length+" trades).");
+}
+
+/* ════════════════ WIRE UP ════════════════ */
+$("btnDerivLogin").addEventListener("click",startDerivLogin);
+$("btnDisconnect").addEventListener("click",doDisconnect);
+$("btnForget").addEventListener("click",doForget);
+$("btnStart").addEventListener("click",startBot);
+$("btnStop").addEventListener("click",()=>stopBot("Stopped by you"));
+$("btnReset").addEventListener("click",resetSession);
+$("btnSaveCsv").addEventListener("click",saveTradesCSV);
+$("btnSaveTxt").addEventListener("click",saveLogTXT);
+$("btnClearLog").addEventListener("click",clearSavedLog);
+$("symbol").addEventListener("change",()=>{ readCfg(); if(S.authed) subscribeTicks(); });
+FIELDS.forEach(f=>$(f).addEventListener("change",readCfg));
+
+window.addEventListener("beforeunload",e=>{
+  try{ saveLog(); }catch(_){}
+  if(S.running){ e.preventDefault(); e.returnValue=""; }
+});
+
+(async function init(){
+  loadCfg(); readCfg(); updateStats();
+  const md=store.get(K_MODE);
+  if(md) $("mode").value=md;
+  setBadge("connBadge","offline","bad");
+  restoreSaved();
+  renderLicense();
+  log("Ready. Sign in securely with Deriv. The 5-hour trial starts on first successful account sign-in.");
+  envPreflight();
+
+  const handled=await handleOAuthCallback();
+  if(!handled && currentToken()){
+    loginMsg("Deriv session found. Connecting…","ok");
+    doConnect();
+  }
+})();
+</script>
+</body>
+</html>
